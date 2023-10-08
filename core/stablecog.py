@@ -6,6 +6,7 @@ import random
 import requests
 import time
 import traceback
+import inspect
 from PIL import Image, PngImagePlugin
 from discord import option
 from discord.ext import commands
@@ -108,13 +109,13 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
         required=False,
         autocomplete=discord.utils.basic_autocomplete(settingscog.SettingsCog.extra_net_autocomplete),
     )
-    @option(
-        'facefix',
-        str,
-        description='Tries to improve faces in images.',
-        required=False,
-        choices=settings.global_var.facefix_models,
-    )
+    #@option(
+    #    'facefix',
+    #    str,
+    #    description='Tries to improve faces in images.',
+    #    required=False,
+    #    choices=settings.global_var.facefix_models,
+    #)
     @option(
         'highres_fix',
         str,
@@ -122,13 +123,13 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
         required=False,
         autocomplete=discord.utils.basic_autocomplete(settingscog.SettingsCog.hires_autocomplete),
     )
-    @option(
-        'clip_skip',
-        int,
-        description='Number of last layers of CLIP model to skip.',
-        required=False,
-        choices=[x for x in range(1, 13, 1)]
-    )
+    #@option(
+    #    'clip_skip',
+    #    int,
+    #    description='Number of last layers of CLIP model to skip.',
+    #    required=False,
+    #    choices=[x for x in range(1, 13, 1)]
+    #)
     @option(
         'strength',
         str,
@@ -152,23 +153,86 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
         description='The number of images to generate. Batch format: count,size',
         required=False,
     )
+    @option(
+        'control_net',
+        str,
+        description='Apply a control network',
+        required=False,
+        autocomplete=discord.utils.basic_autocomplete(settingscog.SettingsCog.control_net_autocomplete),
+    )
+    @option(
+        'control_image',
+        discord.Attachment,
+        description='The image used for the controlnet.',
+        required=False,
+    )
+    @option(
+        'control_preprocessor',
+        str,
+        description='Apply a control preprocessor',
+        required=False,
+        autocomplete=discord.utils.basic_autocomplete(settingscog.SettingsCog.control_preprocessor_autocomplete),
+    )
+    @option(
+        'control_weight',
+        int,
+        description='The control weight from 0-2.',
+        required=False,
+    )
+    @option(
+        'control_start_step',
+        int,
+        description='The starting control step, expressed as a percentage between 0 and 100.',
+        required=False,
+    )
+    @option(
+        'control_end_step',
+        int,
+        description='The ending control step, expressed as a percentage between 0 and 100.',
+        required=False,
+    )
+    @option(
+        'control_mode',
+        str,
+        description='You can prioritize your prompt, the controlnet, or balanced between the two.',
+        required=False,
+        autocomplete=["balanced", "control_net", "prompt"],
+    )
+    @option(
+        'control_resize_mode',
+        str,
+        description='Resize mode options are: "resize_only", "crop_and_resize", "resize_and_fill"',
+        required=False,
+        autocomplete=["resize_only", "crop_and_resize", "resize_and_fill"]
+    )
+
     async def dream_handler(self, ctx: discord.ApplicationContext, *,
-                            prompt: str, negative_prompt: str = None,
+                            prompt: str,
+                            negative_prompt: str = None,
                             data_model: Optional[str] = None,
                             steps: Optional[int] = None,
-                            width: Optional[int] = None, height: Optional[int] = None,
+                            width: Optional[int] = None,
+                            height: Optional[int] = None,
                             guidance_scale: Optional[str] = None,
                             sampler: Optional[str] = None,
                             seed: Optional[int] = -1,
                             styles: Optional[str] = None,
                             extra_net: Optional[str] = None,
-                            facefix: Optional[str] = None,
+                            #facefix: Optional[str] = None,
                             highres_fix: Optional[str] = None,
-                            clip_skip: Optional[int] = None,
+                            #clip_skip: Optional[int] = None,
                             strength: Optional[str] = None,
                             init_image: Optional[discord.Attachment] = None,
                             init_url: Optional[str],
-                            batch: Optional[str] = None):
+                            batch: Optional[str] = None,
+                            control_net: Optional[str] = None,
+                            control_image: Optional[discord.Attachment] = None,
+                            control_preprocessor: Optional[str] = None,
+                            control_weight: Optional[int] = None,
+                            control_start_step: Optional[int] = None,
+                            control_end_step: Optional[int] = None,
+                            control_mode: Optional[str] = None,
+                            control_resize_mode: Optional[str] = None):
 
         # update defaults with any new defaults from settingscog
         channel = '% s' % ctx.channel.id
@@ -187,16 +251,26 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
             sampler = settings.read(channel)['sampler']
         if styles is None:
             styles = settings.read(channel)['style']
-        if facefix is None:
-            facefix = settings.read(channel)['facefix']
+        #if facefix is None:
+        #    facefix = settings.read(channel)['facefix']
         if highres_fix is None:
             highres_fix = settings.read(channel)['highres_fix']
-        if clip_skip is None:
-            clip_skip = settings.read(channel)['clip_skip']
+        #if clip_skip is None:
+        #    clip_skip = settings.read(channel)['clip_skip']
         if strength is None:
             strength = settings.read(channel)['strength']
         if batch is None:
             batch = settings.read(channel)['batch']
+        if control_weight is None:
+            control_weight = settings.read(channel)['control_weight']
+        if control_start_step is None:
+            control_start_step = settings.read(channel)['control_start_step']
+        if control_end_step is None:
+            control_end_step = settings.read(channel)['control_end_step']
+        if control_mode is None:
+            control_mode = settings.read(channel)['control_mode']
+        if control_resize_mode is None:
+            control_resize_mode = settings.read(channel)['control_resize_mode']
 
         # if a model is not selected, do nothing
         model_name = 'Default'
@@ -318,17 +392,37 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
             reply_adds += f'\nExtra network: ``{extra_net}``'
             if net_multi != 0.85:
                 reply_adds += f' (multiplier: ``{net_multi}``)'
-        if facefix != settings.read(channel)['facefix']:
-            reply_adds += f'\nFace restoration: ``{facefix}``'
-        if clip_skip != settings.read(channel)['clip_skip']:
-            reply_adds += f'\nCLIP skip: ``{clip_skip}``'
+        #if facefix != settings.read(channel)['facefix']:
+        #    reply_adds += f'\nFace restoration: ``{facefix}``'
+        #if clip_skip != settings.read(channel)['clip_skip']:
+        #    reply_adds += f'\nCLIP skip: ``{clip_skip}``'
+
+        #both control_net and control_image need to be defined to use the control_net
+        if (control_net != None and control_image == None) or (control_net == None and control_image != None):
+            await ctx.send_response('Both the ``control_net`` and ``control_image`` need to be defined for the control net to function.')
+        else:
+            reply_adds += f'\nControl net: ``{control_net}``'
+            if control_preprocessor:
+                reply_adds += f'\nControl preprocessor: ``{control_preprocessor}``'
+            if control_weight != settings.read(channel)['control_weight']:
+                reply_adds += f'\nControl weight: ``{control_weight}``'
+            if control_start_step != settings.read(channel)['control_start_step']:
+                reply_adds += f'\nControl start: ``{control_start_step}``'
+            if control_end_step != settings.read(channel)['control_end_step']:
+                reply_adds += f'\nControl end: ``{control_end_step}``'
+            if control_mode != settings.read(channel)['control_mode']:
+                reply_adds += f'\nControl mode: ``{control_mode}``'
+            if control_resize_mode != settings.read(channel)['control_resize_mode']:
+                reply_adds += f'\nControl resize mode: ``{control_resize_mode}``'
             
         epoch_time = int(time.time())
 
         # set up tuple of parameters to pass into the Discord view
         input_tuple = (
             ctx, simple_prompt, prompt, negative_prompt, data_model, steps, width, height, guidance_scale, sampler, seed, strength,
-            init_image, batch, styles, facefix, highres_fix, clip_skip, extra_net, epoch_time)
+            init_image, batch, styles, highres_fix, extra_net, epoch_time, control_net, control_image, control_preprocessor, control_weight, 
+            control_start_step, control_end_step, control_mode, control_resize_mode)
+            #init_image, batch, styles, facefix, highres_fix, clip_skip, extra_net, epoch_time)
         
         view = viewhandler.DrawView(input_tuple)
         # setup the queue
@@ -357,6 +451,7 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
 
     # generate the image
     def dream(self, event_loop: queuehandler.GlobalQueue.event_loop, queue_object: queuehandler.DrawObject):
+        print(inspect.getmembers(queue_object))
         try:
             start_time = time.time()
 
@@ -406,29 +501,57 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
                 payload.update(highres_payload)
 
             # add any options that would go into the override_settings
-            override_settings = {"CLIP_stop_at_last_layers": queue_object.clip_skip}
-            if queue_object.facefix != 'None':
-                override_settings["face_restoration_model"] = queue_object.facefix
-                # face restoration needs this extra parameter
-                facefix_payload = {
-                    "restore_faces": True,
-                }
-                payload.update(facefix_payload)
+            #override_settings = {"CLIP_stop_at_last_layers": queue_object.clip_skip}
+            #if queue_object.facefix != 'None':
+            #    override_settings["face_restoration_model"] = queue_object.facefix
+            #    # face restoration needs this extra parameter
+            #    facefix_payload = {
+            #        "restore_faces": True,
+            #    }
+            #    payload.update(facefix_payload)
 
-            # update payload with override_settings
-            override_payload = {
-                "override_settings": override_settings
-            }
-            payload.update(override_payload)
+            ## update payload with override_settings
+            #override_payload = {
+            #    "override_settings": override_settings
+            #}
+            #payload.update(override_payload)
+
+            if queue_object.control_net != None and queue_object.control_image != None: 
+                control_image = base64.b64encode(requests.get(queue_object.control_image.url, stream=True).content).decode('utf-8')
+                control_payload = {
+                    "alwayson_scripts": {
+                        "controlnet": {
+                            "args": [
+                                {
+                                    "input_image": control_image,
+                                    "model": queue_object.control_net,
+                                    "module": queue_object.control_preprocessor,
+                                    "resize_mode": 1,
+                                    "control_mode": 0,
+                                    "pixel_perfect": True
+                                }
+                            ]
+                        }
+                    }
+                }
+                payload.update(control_payload)
+            else:
+                print("Controlnet or controlimage is undefined!")
 
             # send normal payload to webui and only send model payload if one is defined
             s = settings.authenticate_user()
 
+            print("The payload is: ")
+            print(payload)
+
             if queue_object.data_model != '':
+                print("Setting Model")
                 s.post(url=f'{settings.global_var.url}/sdapi/v1/options', json=model_payload)
             if queue_object.init_image is not None:
+                print("putting in an img2img call")
                 response = s.post(url=f'{settings.global_var.url}/sdapi/v1/img2img', json=payload)
             else:
+                print("putting in an txt2img call")
                 response = s.post(url=f'{settings.global_var.url}/sdapi/v1/txt2img', json=payload)
             response_data = response.json()
             end_time = time.time()
@@ -484,6 +607,12 @@ class StableCog(commands.Cog, name='Stable Diffusion', description='Create image
 
             for i in image_data:
                 count += 1
+                if queue_object.control_net != None and queue_object.control_image != None: 
+                    #if controlnet is active, the even images are the control images regurgitated back to us
+                    #skip them, do not write them to disk, do not post them
+                    if count % 2 != 1:
+                        continue
+                
                 image = Image.open(io.BytesIO(base64.b64decode(i)))
 
                 # grab png info

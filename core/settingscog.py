@@ -59,6 +59,16 @@ class SettingsCog(commands.Cog):
         return [
             size for size in settings.global_var.size_range_exceed
         ]
+    
+    def control_net_autocomplete(self: discord.AutocompleteContext):
+        return [
+            control_net for control_net in settings.global_var.control_models
+        ]
+
+    def control_preprocessor_autocomplete(self: discord.AutocompleteContext):
+        return [
+            control_preprocessor for control_preprocessor in settings.global_var.control_modules
+        ]
 
     if len(settings.global_var.size_range) == 0:
         size_auto = discord.utils.basic_autocomplete(size_autocomplete)
@@ -200,26 +210,81 @@ class SettingsCog(commands.Cog):
         description='Use to update global lists (models, styles, embeddings, etc.)',
         required=False,
     )
+    @option(
+        'control_net',
+        str,
+        description='Apply a control network',
+        required=False,
+        autocomplete=discord.utils.basic_autocomplete(control_net_autocomplete),
+    )
+    @option(
+        'control_preprocessor',
+        str,
+        description='Apply a control preprocessor',
+        required=False,
+        autocomplete=discord.utils.basic_autocomplete(control_preprocessor_autocomplete),
+    )
+    @option(
+        'control_weight',
+        int,
+        description='The control weight from 0-2.',
+        required=False,
+    )
+    @option(
+        'control_start_step',
+        int,
+        description='The starting control step, expressed as a percentage between 0 and 100.',
+        required=False,
+    )
+    @option(
+        'control_end_step',
+        int,
+        description='The ending control step, expressed as a percentage between 0 and 100.',
+        required=False,
+    )
+    @option(
+        'control_mode',
+        str,
+        description='You can prioritize your prompt, the controlnet, or balanced between the two.',
+        required=False,
+        autocomplete=["balanced", "control_net", "prompt"],
+    )
+    @option(
+        'control_resize_mode',
+        str,
+        description='Resize mode options are: "resize_only", "crop_and_resize", "resize_and_fill"',
+        required=False,
+        autocomplete=["resize_only", "crop_and_resize", "resize_and_fill"]
+    )
     async def settings_handler(self, ctx,
                                current_settings: Optional[bool] = True,
                                n_prompt: Optional[str] = None,
                                data_model: Optional[str] = None,
                                steps: Optional[int] = None,
                                max_steps: Optional[int] = 1,
-                               width: Optional[int] = None, height: Optional[int] = None,
+                               width: Optional[int] = None,
+                               height: Optional[int] = None,
                                guidance_scale: Optional[str] = None,
                                sampler: Optional[str] = None,
                                styles: Optional[str] = None,
                                hypernet: Optional[str] = None,
                                lora: Optional[str] = None,
-                               facefix: Optional[str] = None,
+                               #facefix: Optional[str] = None,
                                highres_fix: Optional[str] = None,
-                               clip_skip: Optional[int] = None,
+                               #clip_skip: Optional[int] = None,
                                strength: Optional[str] = None,
                                batch: Optional[str] = None,
                                max_batch: Optional[str] = None,
                                upscaler_1: Optional[str] = None,
-                               refresh: Optional[bool] = False):
+                               refresh: Optional[bool] = False,
+                               control_net: Optional[str] = None,
+                               control_preprocessor: Optional[str] = None,
+                               control_weight: Optional[int] = None,
+                               control_start_step: Optional[int] = None,
+                               control_end_step: Optional[int] = None,
+                               control_mode: Optional[str] = None,
+                               control_resize_mode: Optional[str] = None):
+
         # get the channel id and check if a settings file exists
         channel = '% s' % ctx.channel.id
         settings.check(channel)
@@ -254,7 +319,7 @@ class SettingsCog(commands.Cog):
         if refresh:
             settings.global_var.model_info.clear()
             settings.global_var.sampler_names.clear()
-            settings.global_var.facefix_models.clear()
+            #settings.global_var.facefix_models.clear()
             settings.global_var.style_names.clear()
             settings.global_var.embeddings_1.clear()
             settings.global_var.embeddings_2.clear()
@@ -318,20 +383,20 @@ class SettingsCog(commands.Cog):
             new += f'\nStyle: ``"{styles}"``'
             set_new = True
 
-        if facefix is not None:
-            settings.update(channel, 'facefix', facefix)
-            new += f'\nFacefix: ``"{facefix}"``'
-            set_new = True
+        #if facefix is not None:
+        #    settings.update(channel, 'facefix', facefix)
+        #    new += f'\nFacefix: ``"{facefix}"``'
+        #    set_new = True
 
         if highres_fix is not None:
             settings.update(channel, 'highres_fix', highres_fix)
             new += f'\nhighres_fix: ``"{highres_fix}"``'
             set_new = True
 
-        if clip_skip is not None:
-            settings.update(channel, 'clip_skip', clip_skip)
-            new += f'\nCLIP skip: ``{clip_skip}``'
-            set_new = True
+        #if clip_skip is not None:
+        #    settings.update(channel, 'clip_skip', clip_skip)
+        #    new += f'\nCLIP skip: ``{clip_skip}``'
+        #    set_new = True
 
         if hypernet is not None:
             message = ''
@@ -402,6 +467,36 @@ class SettingsCog(commands.Cog):
             else:
                 settings.update(channel, 'batch', f'{batch[0]},{batch[1]}')
                 new += f'\nbatch (count,size): ``{batch[0]},{batch[1]}``'
+            set_new = True
+
+        if control_weight is not None:
+            settings.update(channel, 'control_weight', control_weight)
+            new += f'\nControl weight: ``"{control_weight}"``'
+            set_new = True
+
+        if control_start_step is not None:
+            settings.update(channel, 'control_start_step', control_start_step)
+            new += f'\nControl start step: ``"{control_start_step}"``'
+            set_new = True
+
+        if control_end_step is not None:
+            settings.update(channel, 'control_end_step', control_end_step)
+            new += f'\nControl end step: ``"{control_end_step}"``'
+            set_new = True
+
+        if control_end_step is not None:
+            settings.update(channel, 'control_end_step', control_end_step)
+            new += f'\nControl end step: ``"{control_end_step}"``'
+            set_new = True
+
+        if control_mode is not None:
+            settings.update(channel, 'control_mode', control_mode)
+            new += f'\nControl mode: ``"{control_mode}"``'
+            set_new = True
+
+        if control_resize_mode is not None:
+            settings.update(channel, 'control_resize_mode', control_resize_mode)
+            new += f'\nControl resize mode: ``"{control_resize_mode}"``'
             set_new = True
 
         if set_new:

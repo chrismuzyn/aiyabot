@@ -82,6 +82,11 @@ strength = "0.75"
 batch = "1,1"
 max_batch = "1,1"
 upscaler_1 = "ESRGAN_4x"
+control_weight = "1"
+control_start_step = "0"
+control_end_step = "1"
+control_mode = "balanced"
+control_resize_mode = "crop_and_resize"
 """
 
 
@@ -120,6 +125,8 @@ class GlobalVar:
     prompt_ignore_list = []
     display_ignored_words = "False"
     negative_prompt_prefix = []
+    control_models = []
+    control_modules = [] # aka preprocessors
 
 
 global_var = GlobalVar()
@@ -209,6 +216,10 @@ def extra_net_defaults(prompt, channel):
     return prompt
 
 
+def control_net_check():
+    pass
+
+
 def queue_check(author_compare):
     user_queue = 0
     for queue_object in queuehandler.GlobalQueue.queue:
@@ -275,7 +286,11 @@ def generate_template(template_pop, config):
     template_pop['strength'] = config['strength']
     template_pop['batch'] = config['batch']
     template_pop['max_batch'] = config['max_batch']
-    template_pop['upscaler_1'] = config['upscaler_1']
+    template_pop['control_weight'] = config['control_weight']
+    template_pop['control_start_step'] = config['control_start_step']
+    template_pop['control_end_step'] = config['control_end_step']
+    template_pop['control_mode'] = config['control_mode']
+    template_pop['control_resize_mode'] = config['control_resize_mode']
     return template_pop
 
 
@@ -508,6 +523,11 @@ def populate_global_vars():
     r4 = s.get(global_var.url + "/sdapi/v1/embeddings")
     r5 = s.get(global_var.url + "/sdapi/v1/hypernetworks")
     r6 = s.get(global_var.url + "/sdapi/v1/upscalers")
+    try:
+        r7 = s.get(global_var.url + "/controlnet/model_list")
+        r8 = s.get(global_var.url + "/controlnet/module_list")
+    except():
+        print("Controlnet extension not installed or wrong api version.")
     r = s.get(global_var.url + "/sdapi/v1/sd-models")
     for s1 in r1.json():
         try:
@@ -538,6 +558,18 @@ def populate_global_vars():
         global_var.upscaler_names.append(s6['name'])
     if 'SwinIR_4x' in global_var.upscaler_names:
         template['upscaler_1'] = 'SwinIR_4x'
+    s7 = r7.json()
+    s8 = r8.json()
+    try:
+        for m7 in s7['model_list']:
+            print("m7 which is a control_model reads: {0}".format(m7))
+            global_var.control_models.append(m7)
+        for m8 in s8['module_list']:
+            print("m8 which is a control_module reads: {0}".format(m8))
+            global_var.control_modules.append(m8)
+    except(Exception,):
+        #we do not interrupt for missing controlnet
+        print("You may not have the controlnet extension installed!")
 
     # create nested dict for models based on display_name in models.csv
     # model_info[0] = display name (top level)
