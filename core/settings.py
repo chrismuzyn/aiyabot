@@ -31,6 +31,9 @@ pass = ""
 apiuser = ""
 apipass = ""
 
+# Bearer token for Authorization header
+bearer_token = ""
+
 # Whether or not to save outputs to disk ("True"/"False")
 save_outputs = "True"
 
@@ -108,6 +111,7 @@ class GlobalVar:
     api_auth = False
     api_user: Optional[str] = None
     api_pass: Optional[str] = None
+    bearer_token: Optional[str] = None
     model_info = {}
     max_size = 0
     size_range_exceed = None
@@ -370,13 +374,21 @@ def authenticate_user():
     if global_var.api_auth:
         s.auth = (global_var.api_user, global_var.api_pass)
 
+    # Add Bearer token authentication if set
+    if global_var.bearer_token:
+        s.headers.update({"Authorization": f"Bearer {global_var.bearer_token}"})
+
     # do a check to see if --gradio-auth is set
     if global_var.gradio_auth is None:
-        r = s.get(global_var.url + '/config')
-        if r.status_code == 401:
-            global_var.gradio_auth = True
-        else:
-            global_var.gradio_auth = False
+        try:
+            r = s.get(global_var.url + '/config')
+            if r.status_code == 401:
+                global_var.gradio_auth = True
+            else:
+                global_var.gradio_auth = False
+        except Exception:
+            # Ignore connection errors at this stage
+            pass
 
     if global_var.gradio_auth:
         login_payload = {
@@ -442,6 +454,7 @@ def startup_check():
 
     config_auth(config)
     generate_template(template, config)
+    global_var.bearer_token = config['bearer_token']
     print(f'Using URL: {global_var.url}')
     print(f'Using outputs directory: {global_var.dir}')
 
@@ -621,6 +634,8 @@ def populate_global_vars():
         model_data = list(csv.reader(csv_file, delimiter='|'))
         for row in model_data[1:]:
             for model in r.json():
+                print(model)
+                print()
                 norm_csv_path = os.path.normpath(row[1])
                 norm_api_path = os.path.normpath(model['filename'])
                 name = model.get('name')
@@ -630,6 +645,11 @@ def populate_global_vars():
                         or norm_csv_path.replace(os.sep, '_') == name:
                     global_var.model_info[row[0]] = model['title'], name, model['hash'], row[2]
                     break
+
+    print(model_data)
+    print()
+    print(global_var.model_info)
+
     # add "Default" if models.csv is on default, or if no model matches are found
     if not global_var.model_info:
         global_var.model_info[row[0]] = '', '', '', ''
