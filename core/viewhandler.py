@@ -125,7 +125,7 @@ class DrawModal(Modal):
         invalid_input = False
         infocog_view = infocog.InfoView()
         net_multi, new_net_multi = 0.85, 0
-        embed_err = discord.Embed(title="I can't redraw this!", description="")
+        embed_err = discord.Embed(title="I can't redraw this!", description="There are errors with your input:")
         # if extra network is used, find the multiplier
         if pen[18]:
             if pen[18] in pen[2]:
