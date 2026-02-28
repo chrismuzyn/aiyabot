@@ -192,8 +192,10 @@ class DrawModal(Modal):
                     pen[9] = line.split(':', 1)[1]
                 else:
                     invalid_input = True
+                    samplers = ', '.join(['`%s`' % x for x in settings.global_var.sampler_names])
+                    samplers = samplers[:1000] + '...' if len(samplers) > 1000 else samplers
                     embed_err.add_field(name=f"`{line.split(':', 1)[1]}` is unrecognized. I know of these samplers!",
-                                        value=', '.join(['`%s`' % x for x in settings.global_var.sampler_names]),
+                                        value=samplers,
                                         inline=False)
             if 'strength:' in line:
                 try:
@@ -218,8 +220,10 @@ class DrawModal(Modal):
                     pen[15] = line.split(':', 1)[1]
                 else:
                     invalid_input = True
+                    facefix_models = ', '.join(['`%s`' % x for x in settings.global_var.facefix_models])
+                    facefix_models = facefix_models[:1000] + '...' if len(facefix_models) > 1000 else facefix_models
                     embed_err.add_field(name=f"`{line.split(':', 1)[1]}` can't fix faces! I have suggestions.",
-                                        value=', '.join(['`%s`' % x for x in settings.global_var.facefix_models]),
+                                        value=facefix_models,
                                         inline=False)
             if 'clip_skip:' in line:
                 try:
