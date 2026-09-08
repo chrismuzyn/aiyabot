@@ -54,6 +54,19 @@ class SettingsCog(commands.Cog):
             hires for hires in settings.global_var.hires_upscaler_names
         ]
 
+    def video_engine_autocomplete(self: discord.AutocompleteContext):
+        return [
+            engine for engine in settings.global_var.video_engines
+        ]
+
+    def video_model_autocomplete(self: discord.AutocompleteContext):
+        # filter by engine if the user has typed one, otherwise return all
+        engines = settings.global_var.video_engines
+        models = settings.global_var.video_models
+        return [
+            vm['name'] for vm in models
+        ]
+
     @commands.slash_command(name='settings', description='Review and change channel defaults', guild_only=True)
     @option(
         'current_settings',
@@ -215,6 +228,109 @@ class SettingsCog(commands.Cog):
         description='Enable/Disable live previews in this channel',
         required=False,
     )
+    @option(
+        'video_engine',
+        str,
+        description='Set default video engine for the channel',
+        required=False,
+        autocomplete=discord.utils.basic_autocomplete(video_engine_autocomplete),
+    )
+    @option(
+        'video_model',
+        str,
+        description='Set default video model for the channel',
+        required=False,
+        autocomplete=discord.utils.basic_autocomplete(video_model_autocomplete),
+    )
+    @option(
+        'video_negative_prompt',
+        str,
+        description='Set default negative prompt for video generation',
+        required=False,
+    )
+    @option(
+        'video_width',
+        int,
+        description='Set default video width for the channel',
+        required=False,
+    )
+    @option(
+        'video_height',
+        int,
+        description='Set default video height for the channel',
+        required=False,
+    )
+    @option(
+        'video_frames',
+        int,
+        description='Set default number of video frames for the channel',
+        required=False,
+    )
+    @option(
+        'video_steps',
+        int,
+        description='Set default video steps for the channel',
+        min_value=1,
+        required=False,
+    )
+    @option(
+        'video_fps',
+        int,
+        description='Set default video FPS for the channel (1-60)',
+        min_value=1,
+        max_value=60,
+        required=False,
+    )
+    @option(
+        'video_audio',
+        bool,
+        description='Set default audio generation for video (True/False)',
+        required=False,
+    )
+    @option(
+        'video_guidance_scale',
+        str,
+        description='Set default video guidance scale (-1 for model default)',
+        required=False,
+    )
+    @option(
+        'video_sampler',
+        str,
+        description='Set default video sampler for the channel',
+        required=False,
+    )
+    @option(
+        'video_init_strength',
+        str,
+        description='Set default init strength for video img2vid (0.0 to 1.0)',
+        required=False,
+    )
+    @option(
+        'max_video_frames',
+        int,
+        description='Set maximum video frames for the channel',
+        min_value=1,
+        required=False,
+    )
+    @option(
+        'max_video_steps',
+        int,
+        description='Set maximum video steps for the channel',
+        min_value=1,
+        required=False,
+    )
+    @option(
+        'max_video_size',
+        int,
+        description='Set maximum video width/height for the channel',
+        required=False,
+    )
+    @option(
+        'video_spoiler',
+        bool,
+        description='Mark videos as spoilers (when not specified in /video)',
+        required=False,
+    )
     async def settings_handler(self, ctx,
                                current_settings: Optional[bool] = True,
                                n_prompt: Optional[str] = None,
@@ -239,7 +355,23 @@ class SettingsCog(commands.Cog):
                                spoiler: Optional[bool] = None,
                                spoiler_role: Optional[discord.Role] = None,
                                remove_spoiler_role: Optional[bool] = None,
-                               live_preview: Optional[bool] = None
+                               live_preview: Optional[bool] = None,
+                               video_engine: Optional[str] = None,
+                               video_model: Optional[str] = None,
+                               video_negative_prompt: Optional[str] = None,
+                               video_width: Optional[int] = None,
+                               video_height: Optional[int] = None,
+                               video_frames: Optional[int] = None,
+                               video_steps: Optional[int] = None,
+                               video_fps: Optional[int] = None,
+                               video_audio: Optional[bool] = None,
+                               video_guidance_scale: Optional[str] = None,
+                               video_sampler: Optional[str] = None,
+                               video_init_strength: Optional[str] = None,
+                               max_video_frames: Optional[int] = None,
+                               max_video_steps: Optional[int] = None,
+                               max_video_size: Optional[int] = None,
+                               video_spoiler: Optional[bool] = None
                                ):
         # get the channel id and check if a settings file exists
         channel = '% s' % ctx.channel.id
@@ -249,14 +381,14 @@ class SettingsCog(commands.Cog):
         embed = discord.Embed(title="Channel Defaults Summary", description="")
         embed.set_footer(text=f'Channel id: {channel}')
         embed.colour = settings.global_var.embed_color
-        current, new, new_n_prompt = '', '', ''
+        current, new, new_n_prompt, new_vn_prompt = '', '', '', ''
         dummy_prompt, lora_multi, hyper_multi = '', 0.85, 0.85
         set_new = False
 
         if current_settings:
             cur_set = settings.read(channel)
             for key, value in cur_set.items():
-                if key == 'negative_prompt':
+                if key == 'negative_prompt' or key == 'video_negative_prompt':
                     pass
                 elif key == 'spoiler_role' and value is not None:
                     current += f'\n{key} - <@&{value}>'
@@ -272,6 +404,13 @@ class SettingsCog(commands.Cog):
             elif len(cur_n_prompt) > 1024:
                 cur_n_prompt = f'{cur_n_prompt[:1010]}....'
             embed.add_field(name=f'Current negative prompt', value=f'``{cur_n_prompt}``', inline=True)
+            # put video negative prompt on new field as well
+            cur_vn_prompt = f'{cur_set["video_negative_prompt"]}'
+            if cur_vn_prompt == '':
+                cur_vn_prompt = ' '
+            elif len(cur_vn_prompt) > 1024:
+                cur_vn_prompt = f'{cur_vn_prompt[:1010]}....'
+            embed.add_field(name=f'Current video negative prompt', value=f'``{cur_vn_prompt}``', inline=True)
 
         # run function to update global variables
         if refresh:
@@ -284,6 +423,8 @@ class SettingsCog(commands.Cog):
             settings.global_var.hyper_names.clear()
             settings.global_var.lora_names.clear()
             settings.global_var.upscaler_names.clear()
+            settings.global_var.video_models.clear()
+            settings.global_var.video_engines.clear()
             settings.populate_global_vars()
             embed.add_field(name=f'Refreshed!', value=f'Updated global lists', inline=False)
 
@@ -434,6 +575,40 @@ class SettingsCog(commands.Cog):
                 new += f'\nbatch (count,size): ``{batch[0]},{batch[1]}``'
             set_new = True
 
+        # validate video steps against max video steps (reviewer already re-read above)
+        if video_steps is not None:
+            if video_steps > reviewer['max_video_steps']:
+                new += f"\nMax video steps is ``{reviewer['max_video_steps']}``! You can't go beyond it!"
+            else:
+                settings.update(channel, 'video_steps', video_steps)
+                new += f'\nVideo Steps: ``{video_steps}``'
+            set_new = True
+
+        # validate video frames against max video frames
+        if video_frames is not None:
+            if video_frames > reviewer['max_video_frames']:
+                new += f"\nMax video frames is ``{reviewer['max_video_frames']}``! You can't go beyond it!"
+            else:
+                settings.update(channel, 'video_frames', video_frames)
+                new += f'\nVideo Frames: ``{video_frames}``'
+            set_new = True
+
+        # validate video dimensions against max video size
+        if video_width is not None:
+            if video_width > reviewer['max_video_size']:
+                new += f"\nMax video size is ``{reviewer['max_video_size']}``! Width can't go beyond it!"
+                video_width = reviewer['max_video_size']
+            settings.update(channel, 'video_width', video_width)
+            new += f'\nVideo Width: ``"{video_width}"``'
+            set_new = True
+        if video_height is not None:
+            if video_height > reviewer['max_video_size']:
+                new += f"\nMax video size is ``{reviewer['max_video_size']}``! Height can't go beyond it!"
+                video_height = reviewer['max_video_size']
+            settings.update(channel, 'video_height', video_height)
+            new += f'\nVideo Height: ``"{video_height}"``'
+            set_new = True
+
         if spoiler is not None:
             settings.update(channel, 'spoiler', spoiler)
             new += f'\nDefault Spoiler: ``{spoiler}``'
@@ -452,10 +627,92 @@ class SettingsCog(commands.Cog):
             new += f'\nLive Preview: ``{live_preview}``'
             set_new = True
 
+        if video_engine is not None:
+            settings.update(channel, 'video_engine', video_engine)
+            new += f'\nVideo Engine: ``"{video_engine}"``'
+            set_new = True
+
+        if video_model is not None:
+            settings.update(channel, 'video_model', video_model)
+            new += f'\nVideo Model: ``"{video_model}"``'
+            set_new = True
+
+        if video_negative_prompt is not None:
+            new_vn_prompt = f'{video_negative_prompt}'
+            if video_negative_prompt == 'reset':
+                video_negative_prompt = ''
+                new_vn_prompt = ' '
+            elif len(new_vn_prompt) > 1024:
+                new_vn_prompt = f'{new_vn_prompt[:1010]}....'
+            settings.update(channel, 'video_negative_prompt', video_negative_prompt)
+
+        if video_fps is not None:
+            settings.update(channel, 'video_fps', video_fps)
+            new += f'\nVideo FPS: ``{video_fps}``'
+            set_new = True
+
+        if video_audio is not None:
+            settings.update(channel, 'video_audio', video_audio)
+            new += f'\nVideo Audio: ``{video_audio}``'
+            set_new = True
+
+        if video_guidance_scale is not None:
+            try:
+                float(video_guidance_scale.replace(",", "."))
+                settings.update(channel, 'video_guidance_scale', video_guidance_scale)
+                new += f'\nVideo Guidance Scale: ``{video_guidance_scale}``'
+            except(Exception,):
+                settings.update(channel, 'video_guidance_scale', '-1.0')
+                new += f'\nHad trouble setting Video Guidance Scale! Setting to default of `-1.0`.'
+            set_new = True
+
+        if video_sampler is not None:
+            settings.update(channel, 'video_sampler', video_sampler)
+            new += f'\nVideo Sampler: ``"{video_sampler}"``'
+            set_new = True
+
+        if video_init_strength is not None:
+            try:
+                float(video_init_strength.replace(",", "."))
+                settings.update(channel, 'video_init_strength', video_init_strength)
+                new += f'\nVideo Init Strength: ``"{video_init_strength}"``'
+            except(Exception,):
+                settings.update(channel, 'video_init_strength', '0.8')
+                new += f'\nHad trouble setting Video Init Strength! Setting to default of `0.8`.'
+            set_new = True
+
+        if max_video_frames is not None:
+            settings.update(channel, 'max_video_frames', max_video_frames)
+            new += f'\nMax Video Frames: ``{max_video_frames}``'
+            if reviewer['video_frames'] > max_video_frames:
+                settings.update(channel, 'video_frames', max_video_frames)
+                new += f'\nDefault video frames is too high! Lowering to ``{max_video_frames}``.'
+            set_new = True
+
+        if max_video_steps is not None:
+            settings.update(channel, 'max_video_steps', max_video_steps)
+            new += f'\nMax Video Steps: ``{max_video_steps}``'
+            if reviewer['video_steps'] > max_video_steps:
+                settings.update(channel, 'video_steps', max_video_steps)
+                new += f'\nDefault video steps is too high! Lowering to ``{max_video_steps}``.'
+            set_new = True
+
+        if max_video_size is not None:
+            settings.update(channel, 'max_video_size', max_video_size)
+            new += f'\nMax Video Size: ``{max_video_size}``'
+            set_new = True
+
+        if video_spoiler is not None:
+            settings.update(channel, 'video_spoiler', video_spoiler)
+            new += f'\nVideo Spoiler: ``{video_spoiler}``'
+            set_new = True
+
         if set_new:
             embed.add_field(name=f'New defaults', value=new, inline=False)
         if new_n_prompt:
             embed.add_field(name=f'New default negative prompt', value=f'``{new_n_prompt}``', inline=False)
+        if new_vn_prompt:
+            embed.add_field(name=f'New video negative prompt', value=f'``{new_vn_prompt}``', inline=False)
 
         await ctx.send_response(embed=embed, ephemeral=True)
 

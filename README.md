@@ -37,11 +37,13 @@ To generate a prompt from a couple of words, use the /generate command and inclu
 - batch count
 - compatibility with [SD.Next](https://github.com/vladmandic/automatic)
   - "Full quality" VAE toggle
+  - video generation (`/video` command) with MiniMax and other video engines
 
 #### Bonus features
 
 - /settings command - set per-channel defaults for supported options (_[see Notes](https://github.com/Kilvoctu/aiyabot#notes)!_):
   - also can set maximum steps limit and max batch count limit
+  - also can set video defaults (engine, model, dimensions, frames, steps, FPS, audio, guidance scale, sampler, init strength, spoiler) and max video frames/steps/size
   - refresh (update AIYA's options with any changes from Web UI)
 - /identify command - create a caption for your image.
 - /generate command - generate a prompt from text, using https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion
@@ -49,12 +51,13 @@ To generate a prompt from a couple of words, use the /generate command and inclu
 - /queue command - shows the size of each queue.
 - /info command - basic usage guide, other info, and download batch images.
 - /upscale command - resize your image.
+- /video command - create a video from text or an image (SD.Next only). Supports text-to-video and image-to-video with init images, configurable engine/model, frames, steps, guidance scale, audio, and more. Video outputs include 🖋 (edit prompt) and 🎲 (re-roll seed) buttons.
 - buttons - certain outputs will contain buttons.
   - 🖋 - edit prompt, then generate a new image with same parameters.
   - 🎲 - randomize seed, then generate a new image with same parameters.
   - 📋 - view the generated image's information.
   - ⬆️ - upscale the generated image with defaults. Batch grids require use of the drop downs
-  - ❌ - deletes the generated image. In Live preview this button interrupts generation process
+  - ❌ - deletes the generated image/video. In Live preview this button interrupts generation process
   - ➡️ - skips the current image generation in live preview and go to next batch (if there's more than 1)
 - dropdown menus - batch images produce two drop down menus for the first 25 images.
   - The first menu prompts the bot to send only the images that you select at single images

@@ -93,6 +93,24 @@ live_preview = true
 
 ### SD.Next specific settings ###
 full_quality_vae = true
+
+### Video settings ###
+video_engine = "MiniMax"
+video_model = "MiniMax H3"
+video_negative_prompt = ""
+video_width = 832
+video_height = 480
+video_frames = 17
+video_steps = 50
+video_fps = 24
+video_audio = true
+video_guidance_scale = "-1.0"
+video_sampler = "Default"
+video_init_strength = "0.8"
+max_video_frames = 129
+max_video_steps = 100
+max_video_size = 1024
+video_spoiler = false
 """
 
 # initialize global variables here
@@ -135,6 +153,25 @@ class GlobalVar:
     spoiler_role = None
     preview_update_interval = 3
     backend = constants.BACKEND_WEBUI
+    # video generation settings
+    video_models = []
+    video_engines = []
+    video_engine = "MiniMax"
+    video_model = "MiniMax H3"
+    video_negative_prompt = ""
+    video_width = 832
+    video_height = 480
+    video_frames = 17
+    video_steps = 50
+    video_fps = 24
+    video_audio = True
+    video_guidance_scale = "-1.0"
+    video_sampler = "Default"
+    video_init_strength = "0.8"
+    max_video_frames = 129
+    max_video_steps = 100
+    max_video_size = 1024
+    video_spoiler = False
 
 
 global_var = GlobalVar()
@@ -324,6 +361,23 @@ def generate_template(template_pop, config):
     template_pop['spoiler'] = config['spoiler']
     template_pop['spoiler_role'] = config['spoiler_role']
     template_pop['live_preview'] = config['live_preview']
+    # video settings
+    template_pop['video_engine'] = config['video_engine']
+    template_pop['video_model'] = config['video_model']
+    template_pop['video_negative_prompt'] = config['video_negative_prompt']
+    template_pop['video_width'] = config['video_width']
+    template_pop['video_height'] = config['video_height']
+    template_pop['video_frames'] = config['video_frames']
+    template_pop['video_steps'] = config['video_steps']
+    template_pop['video_fps'] = config['video_fps']
+    template_pop['video_audio'] = config['video_audio']
+    template_pop['video_guidance_scale'] = config['video_guidance_scale']
+    template_pop['video_sampler'] = config['video_sampler']
+    template_pop['video_init_strength'] = config['video_init_strength']
+    template_pop['max_video_frames'] = config['max_video_frames']
+    template_pop['max_video_steps'] = config['max_video_steps']
+    template_pop['max_video_size'] = config['max_video_size']
+    template_pop['video_spoiler'] = config['video_spoiler']
     return template_pop
 
 
@@ -703,3 +757,26 @@ def populate_global_vars():
     global_var.extra_nets = global_var.hyper_names + global_var.lora_names
     global_var.lora_names.insert(0, 'None')
     global_var.hires_upscaler_names.insert(0, 'Disabled')
+
+    # fetch video models from SD.Next (not available on AUTOMATIC1111)
+    try:
+        rv = s.get(global_var.url + "/sdapi/v1/video/models")
+        if rv.status_code == 200:
+            video_data = rv.json()
+            global_var.video_models = []
+            global_var.video_engines = []
+            for vm in video_data:
+                global_var.video_models.append({
+                    'engine': vm.get('engine', ''),
+                    'name': vm.get('name', ''),
+                    'mode': vm.get('mode', ''),
+                    'workflow': vm.get('workflow', '')
+                })
+                if vm.get('engine', '') and vm['engine'] not in global_var.video_engines:
+                    global_var.video_engines.append(vm['engine'])
+            if global_var.video_models:
+                print(f'Loaded {len(global_var.video_models)} video models from {len(global_var.video_engines)} engine(s).')
+    except Exception as e:
+        print('Video models endpoint not available (this is normal for AUTOMATIC1111):', str(e))
+        global_var.video_models = []
+        global_var.video_engines = []

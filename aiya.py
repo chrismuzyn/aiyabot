@@ -27,6 +27,7 @@ self.load_extension('core.stablecog')
 self.load_extension('core.upscalecog')
 self.load_extension('core.identifycog')
 self.load_extension('core.infocog')
+self.load_extension('core.videocog')
 
 use_generate = os.getenv("USE_GENERATE", 'True')
 enable_generate = use_generate.lower() in ('true', '1', 't')

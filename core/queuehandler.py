@@ -66,6 +66,36 @@ class GenerateObject:
         self.cog = cog
         self.ctx = ctx
         self.text = text
+
+
+# the queue object for video generation
+class VideoObject:
+    def __init__(self, cog, ctx, simple_prompt, prompt, negative_prompt, engine, model,
+                 width, height, frames, steps, seed, guidance_scale, sampler_name,
+                 init_image, init_strength, audio, mp4_fps, mp4_interpolate, spoiler,
+                 epoch_time, view):
+        self.cog = cog
+        self.ctx = ctx
+        self.simple_prompt = simple_prompt
+        self.prompt = prompt
+        self.negative_prompt = negative_prompt
+        self.engine = engine
+        self.model = model
+        self.width = width
+        self.height = height
+        self.frames = frames
+        self.steps = steps
+        self.seed = seed
+        self.guidance_scale = guidance_scale
+        self.sampler_name = sampler_name
+        self.init_image = init_image
+        self.init_strength = init_strength
+        self.audio = audio
+        self.mp4_fps = mp4_fps
+        self.mp4_interpolate = mp4_interpolate
+        self.spoiler = spoiler
+        self.epoch_time = epoch_time
+        self.view = view
         
 
 # the queue object for posting to Discord
@@ -83,7 +113,7 @@ class PostObject:
 class GlobalQueue:
     dream_thread = Thread()
     post_event_loop = asyncio.get_event_loop()
-    queue: list[DrawObject | UpscaleObject | IdentifyObject] = []
+    queue: list[DrawObject | UpscaleObject | IdentifyObject | VideoObject] = []
     # new generate queue and thread
     generate_queue: list[GenerateObject] = []
     generate_thread = Thread()
@@ -101,7 +131,7 @@ def get_queue_sizes():
 
 
 def process_queue():
-    def start(target_queue: list[DrawObject | UpscaleObject | IdentifyObject | GenerateObject]):
+    def start(target_queue: list[DrawObject | UpscaleObject | IdentifyObject | VideoObject | GenerateObject]):
         queue_object = target_queue.pop(0)
         queue_object.cog.dream(GlobalQueue.event_loop, queue_object)
 
@@ -109,7 +139,7 @@ def process_queue():
         start(GlobalQueue.queue)
 
 
-async def process_dream(self, queue_object: DrawObject | UpscaleObject | IdentifyObject):
+async def process_dream(self, queue_object: DrawObject | UpscaleObject | IdentifyObject | VideoObject):
     GlobalQueue.dream_thread = Thread(target=self.dream, args=(GlobalQueue.event_loop, queue_object))
     GlobalQueue.dream_thread.start()
 
