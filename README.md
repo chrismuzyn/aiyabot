@@ -85,6 +85,7 @@ To generate a prompt from a couple of words, use the /generate command and inclu
 TOKEN = put your bot token here
 ```
 - Run AIYA by running launch.bat (or launch.sh for Linux)
+  - The launch scripts default to `USE_GENERATE=false`, so `torch`/`transformers` (CUDA) are not installed and the `/generate` command is disabled. Set `USE_GENERATE=true` to enable it.
 
 ## Deploy with Docker
 
@@ -123,7 +124,7 @@ Note the following environment variables work with the docker image:
 - Ensure AIYA has `bot` and `application.commands` scopes when inviting to your Discord server, and intents are enabled.
 - As /settings can be abused, consider reviewing who can access the command. This can be done through Apps -> Integrations in your Server Settings. Read more about /settings [here.](https://github.com/Kilvoctu/aiyabot/wiki/settings-command)
 - AIYA uses Web UI's legacy high-res fix method. To ensure this works correctly, in your Web UI settings, enable this option: `For hires fix, use width/height sliders to set final resolution rather than first pass`
-- For systems with less memory/cpu, or if the `/generate` command is not needed, it can be disabled by setting the environmental variable `USE_GENERATE=false` for docker/cli.
+- For systems with less memory/cpu, or if the `/generate` command is not needed, it can be disabled by setting the environmental variable `USE_GENERATE=false`. `launch.sh`/`launch.bat` default to `false`; the Docker image defaults to `true`.
 
 ## Credits
 

@@ -12,6 +12,7 @@ services:
       DIR: "${DIR}"
       USER: "${USER}"
       PASS: "${PASS}"
+      USE_GENERATE: "${USE_GENERATE:-true}"
     container_name: aiyabot
     restart: always
     volumes:
