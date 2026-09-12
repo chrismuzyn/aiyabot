@@ -43,8 +43,8 @@ To generate a prompt from a couple of words, use the /generate command and inclu
 
 - /settings command - set per-channel defaults for supported options (_[see Notes](https://github.com/Kilvoctu/aiyabot#notes)!_):
   - also can set maximum steps limit and max batch count limit
-  - also can set video defaults (engine, model, dimensions, frames, steps, FPS, audio, guidance scale, sampler, init strength, spoiler) and max video frames/steps/size
   - refresh (update AIYA's options with any changes from Web UI)
+- /videosettings command - set per-channel video defaults (engine, model, dimensions, frames, steps, FPS, audio, guidance scale, sampler, init strength, spoiler) and max video frames/steps/size
 - /identify command - create a caption for your image.
 - /generate command - generate a prompt from text, using https://huggingface.co/Gustavosta/MagicPrompt-Stable-Diffusion
 - /stats command - shows how many /draw commands have been used.
